@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { VpnViewModel } from '../types';
 
 interface Props {
@@ -21,10 +21,37 @@ export const SpeedView: React.FC<Props> = ({ vm }) => {
   // Calculate gauge rotation (-90deg to 90deg)
   // Max speed assumes 100Mbps for full rotation visual
   const rotation = Math.min(vm.speedStats.download, 100) * 1.8 - 90;
+  const formatDuration = (seconds: number) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+  const barColorClass =
+    vm.status === 'CONNECTED' ? 'bg-emerald-400' : vm.status === 'CONNECTING' ? 'bg-yellow-400' : 'bg-red-400';
+  const textColorClass =
+    vm.status === 'CONNECTED' ? 'text-emerald-400' : vm.status === 'CONNECTING' ? 'text-yellow-400' : 'text-red-400';
 
   return (
     <div className="flex flex-col h-full pt-6 px-6 bg-slate-900">
-      <h2 className="text-xl font-bold text-white mb-8">Speed Test</h2>
+      <h2 className="text-2xl font-bold text-white mb-8">Speed Test</h2>
+
+      {/* Connection Status + Duration */}
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="flex items-end gap-1">
+            <span className={`w-1.5 h-3 ${barColorClass} animate-pulse rounded-sm`}></span>
+            <span className={`w-1.5 h-4 ${barColorClass} animate-pulse rounded-sm`} style={{ animationDelay: '120ms' }}></span>
+            <span className={`w-1.5 h-5 ${barColorClass} animate-pulse rounded-sm`} style={{ animationDelay: '240ms' }}></span>
+          </div>
+          <span className={`${textColorClass} text-xs uppercase tracking-widest`}>
+            {vm.status}
+          </span>
+        </div>
+        <div className="text-slate-400 font-mono text-xs">
+          {vm.isConnected ? formatDuration(vm.duration) : '00:00:00'}
+        </div>
+      </div>
 
       {/* Main Gauge Area */}
       <div className="flex-grow flex flex-col items-center justify-center relative">
@@ -56,7 +83,7 @@ export const SpeedView: React.FC<Props> = ({ vm }) => {
             {!testing ? (
                 <button 
                     onClick={handleTest}
-                    className={`px-12 py-3 rounded-full font-bold tracking-widest transition-all ${
+                    className={`px-12 py-3 rounded-full font-bold tracking-widest transition-all active:scale-95 transition-transform duration-200 ${
                         vm.isConnected 
                         ? 'bg-transparent border-2 border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white'
                         : 'bg-slate-800 text-slate-500 cursor-not-allowed'
@@ -75,25 +102,25 @@ export const SpeedView: React.FC<Props> = ({ vm }) => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-3 gap-4 mb-8">
-        <div className="bg-slate-800 rounded-xl p-4 flex flex-col items-center border border-slate-700">
+        <div className="bg-slate-800/80 backdrop-blur-md rounded-xl p-4 flex flex-col items-center border border-slate-700">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-emerald-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
             </svg>
-            <span className="text-white font-bold text-lg">{vm.speedStats.download || '--'}</span>
+            <span className="text-white font-bold text-lg">{vm.speedStats.download ?? '--'}</span>
             <span className="text-[10px] text-slate-500 uppercase">Download</span>
         </div>
-        <div className="bg-slate-800 rounded-xl p-4 flex flex-col items-center border border-slate-700">
+        <div className="bg-slate-800/80 backdrop-blur-md rounded-xl p-4 flex flex-col items-center border border-slate-700">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
             </svg>
-            <span className="text-white font-bold text-lg">{vm.speedStats.upload || '--'}</span>
+            <span className="text-white font-bold text-lg">{vm.speedStats.upload ?? '--'}</span>
             <span className="text-[10px] text-slate-500 uppercase">Upload</span>
         </div>
-        <div className="bg-slate-800 rounded-xl p-4 flex flex-col items-center border border-slate-700">
+        <div className="bg-slate-800/80 backdrop-blur-md rounded-xl p-4 flex flex-col items-center border border-slate-700">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
-            <span className="text-white font-bold text-lg">{vm.speedStats.latency || '--'}</span>
+            <span className="text-white font-bold text-lg font-mono">{vm.speedStats.latency ?? '--'}</span>
             <span className="text-[10px] text-slate-500 uppercase">Ping</span>
         </div>
       </div>
