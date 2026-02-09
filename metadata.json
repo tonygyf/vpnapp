@@ -1,0 +1,5 @@
+{
+  "name": "V2Ray Simple VPN",
+  "description": "A high-fidelity mobile web prototype of a V2Ray VPN client featuring modern UI, subscription management, and speed testing visualizations.",
+  "requestFramePermissions": []
+}
