@@ -35,17 +35,17 @@ export const mockVpnService = {
     });
   },
 
-  // Simulates the SpeedTest.kt logic
+  // Simulates the SpeedTest.kt logic - modeled after fast.com
   async performSpeedTest(): Promise<{ download: number; upload: number; latency: number }> {
     return new Promise((resolve) => {
-      // Simulate 3 seconds of testing
+      // Simulate full test duration (download + upload + ping)
       setTimeout(() => {
         resolve({
           download: Math.floor(Math.random() * 80) + 20, // 20-100 Mbps
-          upload: Math.floor(Math.random() * 30) + 5, // 5-35 Mbps
-          latency: Math.floor(Math.random() * 50) + 30, // 30-80 ms
+          upload: Math.floor(Math.random() * 40) + 10, // 10-50 Mbps
+          latency: Math.floor(Math.random() * 40) + 20, // 20-60 ms
         });
-      }, 3000);
+      }, 4500); // Total test time
     });
   }
 };

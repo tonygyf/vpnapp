@@ -7,96 +7,179 @@ interface Props {
 
 export const SpeedView: React.FC<Props> = ({ vm }) => {
   const [testing, setTesting] = useState(false);
+  const [testPhase, setTestPhase] = useState<'idle' | 'download' | 'upload' | 'ping' | 'complete'>('idle');
+  const [displaySpeed, setDisplaySpeed] = useState(0);
 
   const handleTest = async () => {
     if (!vm.isConnected) {
-        alert("Please connect to a VPN server first.");
-        return;
+      alert("Please connect to a VPN server first.");
+      return;
     }
     setTesting(true);
+    setTestPhase('download');
+    setDisplaySpeed(0);
+
+    // Simulate download test with progressive animation
+    await simulateDownloadTest();
+    
+    setTestPhase('upload');
+    // Simulate upload test
+    await simulateUploadTest();
+    
+    setTestPhase('ping');
+    // Simulate ping test
+    await simulatePingTest();
+    
+    // Run actual speed test
     await vm.runSpeedTest();
+    
+    setTestPhase('complete');
     setTesting(false);
+    setTimeout(() => {
+      setTestPhase('idle');
+    }, 2000);
   };
 
-  // Calculate gauge rotation (-90deg to 90deg)
-  // Max speed assumes 100Mbps for full rotation visual
-  const rotation = Math.min(vm.speedStats.download, 100) * 1.8 - 90;
+  const simulateDownloadTest = () => {
+    return new Promise<void>((resolve) => {
+      let current = 0;
+      const target = vm.speedStats.download || Math.random() * 80 + 20;
+      const interval = setInterval(() => {
+        current += Math.random() * 15;
+        if (current >= target) {
+          current = target;
+          clearInterval(interval);
+          resolve();
+        }
+        setDisplaySpeed(current);
+      }, 50);
+    });
+  };
+
+  const simulateUploadTest = () => {
+    return new Promise<void>((resolve) => {
+      setTimeout(() => {
+        resolve();
+      }, 1500);
+    });
+  };
+
+  const simulatePingTest = () => {
+    return new Promise<void>((resolve) => {
+      setTimeout(() => {
+        resolve();
+      }, 1000);
+    });
+  };
+
+  const getTestStatusText = () => {
+    switch (testPhase) {
+      case 'download':
+        return 'Testing Download...';
+      case 'upload':
+        return 'Testing Upload...';
+      case 'ping':
+        return 'Testing Ping...';
+      case 'complete':
+        return 'Complete!';
+      default:
+        return '';
+    }
+  };
+
+  const displayValue = testing ? displaySpeed : vm.speedStats.download;
 
   return (
     <div className="flex flex-col h-full pt-6 px-6 bg-slate-900">
       <h2 className="text-xl font-bold text-white mb-8">Speed Test</h2>
 
-      {/* Main Gauge Area */}
-      <div className="flex-grow flex flex-col items-center justify-center relative">
+      {/* Main Content Area - Similar to fast.com */}
+      <div className="flex-grow flex flex-col items-center justify-center">
         
-        {/* Gauge Background */}
-        <div className="w-64 h-32 overflow-hidden relative mb-4">
-             <div className="w-64 h-64 rounded-full border-[12px] border-slate-800 box-border"></div>
+        {/* Large Speed Display */}
+        <div className="text-center mb-12">
+          <div className="text-7xl font-bold text-white mb-4 tracking-tight">
+            {displayValue.toFixed(1)}
+          </div>
+          <div className="text-lg text-slate-400 uppercase tracking-widest">
+            Mbps
+          </div>
         </div>
 
-        {/* Gauge Value (Absolute for centering) */}
-        <div className="absolute top-[50%] left-[50%] -translate-x-1/2 -translate-y-[10%] w-64 h-32 overflow-hidden">
-             <div 
-                className="w-64 h-64 rounded-full border-[12px] border-transparent border-t-blue-500 border-r-blue-500 transition-all duration-1000 ease-out"
-                style={{ transform: `rotate(${rotation}deg)` }}
-             ></div>
-        </div>
-
-        {/* Center Text */}
-        <div className="absolute top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 mt-8 text-center">
-            <div className="text-5xl font-bold text-white tracking-tighter">
-                {vm.speedStats.download.toFixed(1)}
+        {/* Test Status or Button */}
+        <div className="mb-12 min-h-12 flex items-center justify-center">
+          {testing ? (
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              <div className="text-blue-400 text-sm tracking-widest animate-pulse font-medium">
+                {getTestStatusText()}
+              </div>
             </div>
-            <div className="text-sm text-slate-400 uppercase tracking-widest mt-1">Mbps</div>
-            <div className="text-xs text-blue-400 mt-1">DOWNLOAD</div>
+          ) : (
+            <button 
+              onClick={handleTest}
+              className={`px-16 py-4 rounded-lg font-bold text-lg tracking-widest transition-all ${
+                vm.isConnected 
+                ? 'bg-blue-600 text-white hover:bg-blue-700 active:scale-95 shadow-lg'
+                : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+              }`}
+            >
+              {vm.isConnected ? 'START TEST' : 'CONNECT FIRST'}
+            </button>
+          )}
         </div>
 
-        {/* Start Button */}
-        <div className="mt-12">
-            {!testing ? (
-                <button 
-                    onClick={handleTest}
-                    className={`px-12 py-3 rounded-full font-bold tracking-widest transition-all ${
-                        vm.isConnected 
-                        ? 'bg-transparent border-2 border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white'
-                        : 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                    }`}
-                >
-                    {vm.isConnected ? 'GO' : 'CONNECT FIRST'}
-                </button>
-            ) : (
-                <div className="flex flex-col items-center">
-                    <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-2"></div>
-                    <span className="text-blue-400 text-xs tracking-widest animate-pulse">TESTING...</span>
-                </div>
-            )}
-        </div>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        <div className="bg-slate-800 rounded-xl p-4 flex flex-col items-center border border-slate-700">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-emerald-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        {/* Progress Indicators */}
+        {testing && (
+          <div className="flex gap-12 mb-8">
+            <div className={`flex flex-col items-center ${testPhase === 'download' || testPhase === 'upload' || testPhase === 'ping' || testPhase === 'complete' ? 'opacity-100' : 'opacity-40'}`}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-emerald-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-            </svg>
-            <span className="text-white font-bold text-lg">{vm.speedStats.download || '--'}</span>
-            <span className="text-[10px] text-slate-500 uppercase">Download</span>
-        </div>
-        <div className="bg-slate-800 rounded-xl p-4 flex flex-col items-center border border-slate-700">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              </svg>
+              <span className="text-xs text-slate-400 uppercase">Download</span>
+            </div>
+            <div className={`flex flex-col items-center ${testPhase === 'upload' || testPhase === 'ping' || testPhase === 'complete' ? 'opacity-100' : 'opacity-40'}`}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-            </svg>
-            <span className="text-white font-bold text-lg">{vm.speedStats.upload || '--'}</span>
-            <span className="text-[10px] text-slate-500 uppercase">Upload</span>
-        </div>
-        <div className="bg-slate-800 rounded-xl p-4 flex flex-col items-center border border-slate-700">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              </svg>
+              <span className="text-xs text-slate-400 uppercase">Upload</span>
+            </div>
+            <div className={`flex flex-col items-center ${testPhase === 'ping' || testPhase === 'complete' ? 'opacity-100' : 'opacity-40'}`}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            <span className="text-white font-bold text-lg">{vm.speedStats.latency || '--'}</span>
-            <span className="text-[10px] text-slate-500 uppercase">Ping</span>
-        </div>
+              </svg>
+              <span className="text-xs text-slate-400 uppercase">Ping</span>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Results Grid - Only show when test is complete */}
+      {!testing && (vm.speedStats.download > 0 || vm.speedStats.upload > 0) && (
+        <div className="grid grid-cols-3 gap-3 mb-8">
+          <div className="bg-slate-800 rounded-lg p-4 flex flex-col items-center border border-slate-700">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-emerald-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+            </svg>
+            <span className="text-white font-bold text-lg">{vm.speedStats.download.toFixed(1)}</span>
+            <span className="text-[10px] text-slate-500 uppercase mt-1">Download</span>
+          </div>
+          <div className="bg-slate-800 rounded-lg p-4 flex flex-col items-center border border-slate-700">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+            </svg>
+            <span className="text-white font-bold text-lg">{vm.speedStats.upload.toFixed(1)}</span>
+            <span className="text-[10px] text-slate-500 uppercase mt-1">Upload</span>
+          </div>
+          <div className="bg-slate-800 rounded-lg p-4 flex flex-col items-center border border-slate-700">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-yellow-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            <span className="text-white font-bold text-lg">{vm.speedStats.latency}</span>
+            <span className="text-[10px] text-slate-500 uppercase mt-1">Ping</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
