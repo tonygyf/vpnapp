@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { VpnViewModel } from '../types';
 import { DEFAULT_SUBSCRIPTION_URL } from '../constants';
 
@@ -9,20 +9,49 @@ interface Props {
 export const ServersView: React.FC<Props> = ({ vm }) => {
   const [showSubInput, setShowSubInput] = useState(false);
   const [subUrl, setSubUrl] = useState(DEFAULT_SUBSCRIPTION_URL);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const toastTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        window.clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleImport = async () => {
     if(!subUrl) return;
-    const success = await vm.importSubscription(subUrl);
-    if(success) {
+    const result = await vm.importSubscription(subUrl);
+    if(result.success) {
         setShowSubInput(false);
-        setSubUrl('');
+        setSubUrl(DEFAULT_SUBSCRIPTION_URL);
+        setToast({ type: 'success', message: `导入成功：${result.count || 0} 个节点` });
     } else {
-        alert("Failed to parse subscription");
+        const reason = result.error || 'Failed to parse subscription';
+        setToast({ type: 'error', message: `导入失败：${reason}` });
     }
+    if (toastTimerRef.current) {
+      window.clearTimeout(toastTimerRef.current);
+    }
+    toastTimerRef.current = window.setTimeout(() => {
+      setToast(null);
+    }, 2500);
   };
 
   return (
     <div className="flex flex-col h-full bg-slate-900 pt-6">
+      {toast && (
+        <div className="fixed left-1/2 -translate-x-1/2 bottom-6 z-50">
+          <div className={`px-4 py-2 rounded-lg text-sm font-medium border ${
+            toast.type === 'success'
+              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+              : 'bg-red-500/20 text-red-300 border-red-500/40'
+          }`}>
+            {toast.message}
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="px-6 pb-4 border-b border-slate-800 flex justify-between items-center">
         <h2 className="text-xl font-bold text-white">Locations</h2>

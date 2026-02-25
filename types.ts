@@ -53,7 +53,7 @@ export interface VpnViewModel {
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
   selectNode: (node: VpnNode) => void;
-  importSubscription: (url: string, forceRefresh?: boolean) => Promise<boolean>;
+  importSubscription: (url: string, forceRefresh?: boolean) => Promise<{ success: boolean; error?: string; count?: number }>;
   removeSubscription: (url: string) => void;
   updateAllSubscriptions: () => Promise<void>;
   runSpeedTest: () => Promise<void>;

@@ -177,7 +177,7 @@ export const useVpnViewModel = (): VpnViewModel => {
   }, [status]);
 
   const importSubscription = useCallback(async (url: string, forceRefresh = false) => {
-    if (!url) return false;
+    if (!url) return { success: false, error: 'Empty URL' };
     try {
       setIsUpdatingSubscriptions(true);
       const fetchedNodes = await mockVpnService.fetchSubscription(url, forceRefresh);
@@ -187,10 +187,10 @@ export const useVpnViewModel = (): VpnViewModel => {
       setSubscriptions(updatedSubs);
       
       refreshNodeList();
-      return true;
+      return { success: true, count: fetchedNodes.length };
     } catch (e) {
       console.error('Failed to import subscription:', e);
-      return false;
+      return { success: false, error: String(e) };
     } finally {
       setIsUpdatingSubscriptions(false);
     }

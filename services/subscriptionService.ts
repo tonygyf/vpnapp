@@ -52,13 +52,17 @@ export const subscriptionService = {
    */
   async fetchAndParseSubscription(url: string, forceRefresh = false): Promise<VpnNode[]> {
     try {
-      let requestUrl = url;
+      const requestUrls: string[] = [];
       try {
         const u = new URL(url);
-        if (import.meta.env.DEV && u.hostname === 'vpn.gyf123.dpdns.org') {
-          requestUrl = '/sub' + u.search;
+        if (u.hostname === 'vpn.gyf123.dpdns.org') {
+          requestUrls.push('/sub' + u.search);
+          requestUrls.push(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
+          requestUrls.push(`https://corsproxy.io/?${encodeURIComponent(url)}`);
         }
+        requestUrls.push(url);
       } catch {
+        requestUrls.push(url);
       }
 
       // 检查缓存
@@ -70,14 +74,30 @@ export const subscriptionService = {
         return existing.nodes;
       }
 
-      console.log('Fetching subscription from:', requestUrl);
-      const response = await fetch(requestUrl, {
-        method: 'GET',
-        headers: {
-          'User-Agent': 'V2Ray VPN App',
-        },
-        cache: 'no-cache',
-      });
+      let response: Response | null = null;
+      let lastError: unknown = null;
+      for (const requestUrl of requestUrls) {
+        try {
+          console.log('Fetching subscription from:', requestUrl);
+          response = await fetch(requestUrl, {
+            method: 'GET',
+            headers: {
+              'User-Agent': 'V2Ray VPN App',
+            },
+            cache: 'no-cache',
+          });
+          if (response.ok) {
+            break;
+          }
+          lastError = new Error(`HTTP ${response.status}: ${response.statusText}`);
+        } catch (e) {
+          lastError = e;
+        }
+      }
+
+      if (!response) {
+        throw lastError || new Error('Failed to fetch subscription');
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
