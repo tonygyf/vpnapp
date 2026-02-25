@@ -20,15 +20,17 @@ export const ConnectButton: React.FC<Props> = ({ status, onClick, duration }) =>
 
   return (
     <div className="relative flex flex-col items-center justify-center my-8">
-      {/* Outer Glow/Ripple */}
-      <div className={`absolute w-48 h-48 rounded-full transition-all duration-1000 ${
+      {/* Outer Glow/Ripple - 放大 + 再向上 */}
+      <div 
+        className={`absolute w-[230px] h-[230px] rounded-full transition-all duration-1000 left-1/2 top-[-42px] -translate-x-1/2 -translate-y-1/2${
         isConnected ? 'bg-emerald-500/20 scale-125 animate-pulse' : 
         isConnecting ? 'bg-yellow-500/20 scale-110 animate-pulse' :
         'bg-blue-500/10 scale-100'
-      }`} />
+    }`} 
+/>
       
       {/* Inner Glow */}
-      <div className={`absolute w-40 h-40 rounded-full transition-all duration-700 ${
+      <div className={`absolute w-40 h-40 rounded-full transition-all duration-700 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${
          isConnected ? 'bg-emerald-500/30 blur-xl' : 
          isConnecting ? 'bg-yellow-500/30 blur-xl' :
          'bg-blue-600/20 blur-xl'

@@ -2,6 +2,11 @@
  * JSBridge 通信层
  * 提供前端与原生代码的双向通信机制
  * 支持 Android 和 iOS 平台
+ * 
+ * [已升级] 集成增强的 NativeBridge
+ * - 自动探活
+ * - 超时重试
+ * - 自动恢复
  */
 
 type MessageCallback = (response: any) => void;
@@ -18,6 +23,7 @@ class JSBridge {
   private pendingMessages: Map<number, PendingMessage> = new Map();
   private eventListeners: Map<string, EventListener[]> = new Map();
   private isWebViewReady: boolean = false;
+  private nativeBridge: any = null;
 
   private constructor() {
     this.initializeBridge();
@@ -32,9 +38,16 @@ class JSBridge {
 
   /**
    * 初始化 JSBridge
-   * 检测环境并设置相应的通信机制
    */
   private initializeBridge() {
+    // 尝试获取增强的 NativeBridge
+    if ((window as any).NativeBridge) {
+      this.nativeBridge = (window as any).NativeBridge;
+      console.log('JSBridge: Using enhanced NativeBridge');
+      this.isWebViewReady = true;
+      return;
+    }
+
     // 检测是否在 WebView 中
     const isAndroid = /Android/.test(navigator.userAgent);
     const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
@@ -49,31 +62,23 @@ class JSBridge {
 
   /**
    * 设置 WebView 桥接
-   * Android 和 iOS 都通过这个统一的接口
    */
   private setupWebViewBridge() {
     const isAndroid = /Android/.test(navigator.userAgent);
 
     if (isAndroid) {
-      // Android WebView: window.VpnJSBridge 由原生代码注入
       if ((window as any).VpnJSBridge) {
         console.log('JSBridge: Android WebView detected');
         this.isWebViewReady = true;
-
-        // 设置原生消息处理入口
         (window as any).handleWebMessage = this.handleNativeMessage.bind(this);
       } else {
         console.warn('JSBridge: Waiting for Android WebView bridge injection...');
-        // 延迟检查
         setTimeout(() => this.checkAndroidBridge(), 500);
       }
     } else {
-      // iOS WebView: 通过 webkit.messageHandlers
       if ((window as any).webkit?.messageHandlers?.vpnBridge) {
         console.log('JSBridge: iOS WebView detected');
         this.isWebViewReady = true;
-
-        // 设置原生消息处理入口
         (window as any).handleNativeMessage = this.handleNativeMessage.bind(this);
       } else {
         console.warn('JSBridge: Waiting for iOS WebView bridge injection...');
@@ -102,20 +107,27 @@ class JSBridge {
    * 检查 JSBridge 是否就绪
    */
   isReady(): boolean {
-    return this.isWebViewReady;
+    return this.isWebViewReady || !!this.nativeBridge;
   }
 
   /**
    * 调用原生方法
-   * @param method 方法名
-   * @param params 参数对象
-   * @param callback 回调函数
+   * [新] 如果有 NativeBridge，优先使用增强版本
    */
   call(method: string, params?: Record<string, any>, callback?: MessageCallback): Promise<any> {
+    // 优先使用增强的 NativeBridge
+    if (this.nativeBridge && typeof this.nativeBridge.call === 'function') {
+      console.log(`[JSBridge] Using NativeBridge for ${method}`);
+      return this.nativeBridge.call(method, params || {}).then((result: any) => {
+        if (callback) callback(result);
+        return result;
+      });
+    }
+
+    // 降级到原来的实现
     return new Promise((resolve, reject) => {
       if (!this.isWebViewReady) {
         console.warn('JSBridge: Bridge not ready, queuing message');
-        // 等待 bridge 就绪
         setTimeout(() => {
           this.call(method, params, callback)
             .then(resolve)
@@ -131,7 +143,6 @@ class JSBridge {
         params: params || {},
       };
 
-      // 注册回调
       const pendingMsg: PendingMessage = {
         callback: (response: any) => {
           if (callback) callback(response);
@@ -140,12 +151,10 @@ class JSBridge {
         timeout: window.setTimeout(() => {
           this.pendingMessages.delete(messageId);
           reject(new Error(`JSBridge timeout: ${method}`));
-        }, 30000), // 30秒超时
+        }, 30000),
       };
 
       this.pendingMessages.set(messageId, pendingMsg);
-
-      // 发送消息到原生
       this.sendToNative(message);
     });
   }

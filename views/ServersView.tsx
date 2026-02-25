@@ -89,14 +89,16 @@ export const ServersView: React.FC<Props> = ({ vm }) => {
             return (
                 <div 
                     key={node.id}
-                    onClick={() => vm.selectNode(node)}
-                    className={`group flex items-center justify-between p-4 mb-3 rounded-xl border transition-all cursor-pointer ${
+                    className={`group flex items-center justify-between p-4 mb-3 rounded-xl border transition-all ${
                         isSelected 
                         ? 'bg-blue-600/10 border-blue-500/50' 
                         : 'bg-slate-800/50 border-transparent hover:bg-slate-800'
                     }`}
                 >
-                    <div className="flex items-center gap-4">
+                    <div 
+                        onClick={() => vm.selectNode(node)}
+                        className="flex-1 flex items-center gap-4 cursor-pointer"
+                    >
                         <span className="text-3xl">{node.flag}</span>
                         <div>
                             <h3 className={`font-medium ${isSelected ? 'text-blue-400' : 'text-white'}`}>
@@ -129,6 +131,29 @@ export const ServersView: React.FC<Props> = ({ vm }) => {
                         }`}>
                             {isSelected && <div className="w-2 h-2 rounded-full bg-blue-500" />}
                         </div>
+                        
+                        {/* Delete Button */}
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm(`Delete "${node.name}"?`)) {
+                                    vm.deleteNode(node.id);
+                                    setToast({ type: 'success', message: `已删除: ${node.name}` });
+                                    if (toastTimerRef.current) {
+                                      window.clearTimeout(toastTimerRef.current);
+                                    }
+                                    toastTimerRef.current = window.setTimeout(() => {
+                                      setToast(null);
+                                    }, 2000);
+                                }
+                            }}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-500/10"
+                            title="Delete node"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
             );

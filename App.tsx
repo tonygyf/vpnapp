@@ -3,6 +3,9 @@ import { HashRouter, Routes, Route, useLocation, Link } from 'react-router-dom';
 import { useVpnViewModel } from './hooks/useVpnViewModel';
 import { jsbridge } from './services/jsbridge';
 import { vpnBridgeService } from './services/vpnBridgeService';
+// ============ 导入增强的 JSBridge 包装 ============
+import NativeBridge from './services/nativeBridge';
+// ================================================
 import { HomeView } from './views/HomeView';
 import { ServersView } from './views/ServersView';
 import { SpeedView } from './views/SpeedView';

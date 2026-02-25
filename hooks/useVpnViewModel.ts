@@ -214,6 +214,19 @@ export const useVpnViewModel = (): VpnViewModel => {
     refreshNodeList();
   }, [refreshNodeList]);
 
+  const deleteNode = useCallback((nodeId: string) => {
+    // 从订阅服务中删除节点
+    subscriptionService.removeNode(nodeId);
+    
+    // 如果当前选中的节点被删除，清除选择
+    if (selectedNode?.id === nodeId) {
+      setSelectedNode(null);
+    }
+    
+    // 刷新节点列表
+    refreshNodeList();
+  }, [selectedNode, refreshNodeList]);
+
   const updateAllSubscriptions = useCallback(async () => {
     if (isUpdatingSubscriptions) return;
     
@@ -271,6 +284,7 @@ export const useVpnViewModel = (): VpnViewModel => {
     selectNode: selectNodeHandler,
     importSubscription,
     removeSubscription,
+    deleteNode,
     updateAllSubscriptions,
     runSpeedTest,
     purchasePremium

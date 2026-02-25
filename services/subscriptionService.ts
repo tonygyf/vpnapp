@@ -40,10 +40,50 @@ export const subscriptionService = {
   },
 
   /**
+   * 覆盖订阅（清除其他订阅，仅保留该订阅）
+   * 用于自动更新时替换节点列表
+   */
+  overrideSubscriptions(info: SubscriptionInfo): void {
+    // 仅保留要覆盖的订阅
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([info]));
+  },
+
+  /**
    * 删除订阅
    */
   removeSubscription(url: string): void {
     const subs = this.getSubscriptions().filter(s => s.url !== url);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(subs));
+  },
+
+  /**
+   * 从订阅中删除单个节点
+   */
+  removeNode(nodeId: string): void {
+    const subs = this.getSubscriptions();
+    let changed = false;
+    
+    for (const sub of subs) {
+      const originLength = sub.nodes.length;
+      sub.nodes = sub.nodes.filter(n => n.id !== nodeId);
+      if (sub.nodes.length < originLength) {
+        changed = true;
+      }
+    }
+    
+    if (changed) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(subs));
+    }
+  },
+
+  /**
+   * 清空所有节点列表
+   */
+  clearAllNodes(): void {
+    const subs = this.getSubscriptions();
+    for (const sub of subs) {
+      sub.nodes = [];
+    }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(subs));
   },
 
