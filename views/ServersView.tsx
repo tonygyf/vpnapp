@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { VpnViewModel } from '../types';
+import { DEFAULT_SUBSCRIPTION_URL } from '../constants';
 
 interface Props {
   vm: VpnViewModel;
@@ -7,7 +8,7 @@ interface Props {
 
 export const ServersView: React.FC<Props> = ({ vm }) => {
   const [showSubInput, setShowSubInput] = useState(false);
-  const [subUrl, setSubUrl] = useState('');
+  const [subUrl, setSubUrl] = useState(DEFAULT_SUBSCRIPTION_URL);
 
   const handleImport = async () => {
     if(!subUrl) return;

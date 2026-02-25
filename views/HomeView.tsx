@@ -1,19 +1,14 @@
 import React from 'react';
 import { VpnViewModel } from '../types';
 import { ConnectButton } from '../components/ConnectButton';
-import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 
 interface Props {
   vm: VpnViewModel;
 }
 
-// Generate some fake historical data for the chart
-const data = Array.from({ length: 20 }, (_, i) => ({
-  name: i,
-  uv: Math.floor(Math.random() * 50) + 10,
-}));
-
 export const HomeView: React.FC<Props> = ({ vm }) => {
+  const data = vm.trafficHistory;
   return (
     <div className="flex flex-col h-full pt-6 px-6">
       {/* Header */}
@@ -69,7 +64,7 @@ export const HomeView: React.FC<Props> = ({ vm }) => {
                 <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
               </linearGradient>
             </defs>
-            <Area type="monotone" dataKey="uv" stroke="#8b5cf6" strokeWidth={2} fillOpacity={1} fill="url(#colorUv)" />
+            <Area type="monotone" dataKey="download" stroke="#8b5cf6" strokeWidth={2} fillOpacity={1} fill="url(#colorUv)" />
           </AreaChart>
         </ResponsiveContainer>
       </div>

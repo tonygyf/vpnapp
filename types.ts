@@ -6,12 +6,33 @@ export interface VpnNode {
   flag: string; // Emoji flag
   ping: number; // ms
   isPremium: boolean;
+  _raw?: any; // 原始协议配置数据
+}
+
+export interface Subscription {
+  url: string;
+  name?: string;
+  lastUpdate: number;
+  nodes: VpnNode[];
+}
+
+export interface AppEnvironment {
+  isNativeApp: boolean; // 是否运行在原生 App 中
+  platform: 'android' | 'ios' | 'web'; // 运行平台
+  appVersion?: string;
+  osVersion?: string;
 }
 
 export interface SpeedStats {
   download: number; // Mbps
   upload: number; // Mbps
   latency: number; // ms
+}
+
+export interface TrafficPoint {
+  time: number;
+  upload: number;
+  download: number;
 }
 
 export type ConnectionStatus = 'DISCONNECTED' | 'CONNECTING' | 'CONNECTED' | 'DISCONNECTING';
@@ -22,15 +43,19 @@ export interface VpnViewModel {
   selectedNode: VpnNode | null;
   nodes: VpnNode[];
   speedStats: SpeedStats;
+  trafficHistory: TrafficPoint[];
   isConnected: boolean;
   isPremium: boolean;
   duration: number; // seconds connected
+  subscriptions: Subscription[]; // 已添加的订阅列表
   
   // Actions
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
   selectNode: (node: VpnNode) => void;
-  importSubscription: (url: string) => Promise<boolean>;
+  importSubscription: (url: string, forceRefresh?: boolean) => Promise<boolean>;
+  removeSubscription: (url: string) => void;
+  updateAllSubscriptions: () => Promise<void>;
   runSpeedTest: () => Promise<void>;
   purchasePremium: (method: 'wechat' | 'alipay') => Promise<void>;
 }

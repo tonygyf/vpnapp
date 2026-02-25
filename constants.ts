@@ -16,3 +16,5 @@ export const COLORS = {
   error: '#ef4444', // red-500
   background: '#0f172a', // slate-900
 };
+
+export const DEFAULT_SUBSCRIPTION_URL = 'https://vpn.gyf123.dpdns.org/sub?token=eadb72b747804e8a4833e4b3e24a6c2c';

@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, useLocation, Link } from 'react-router-dom';
 import { useVpnViewModel } from './hooks/useVpnViewModel';
+import { jsbridge } from './services/jsbridge';
+import { vpnBridgeService } from './services/vpnBridgeService';
 import { HomeView } from './views/HomeView';
 import { ServersView } from './views/ServersView';
 import { SpeedView } from './views/SpeedView';
@@ -62,6 +64,35 @@ const BottomNav = () => {
 
 const App: React.FC = () => {
   const vm = useVpnViewModel();
+  const [bridgeStatus, setBridgeStatus] = useState<'ready' | 'loading' | 'not-available'>('loading');
+
+  // 初始化 JSBridge
+  useEffect(() => {
+    // JSBridge 会在自动构造时初始化
+    console.log('App mounted, initializing JSBridge...');
+    
+    // 监听 Bridge 就绪事件
+    const unsubscribe = jsbridge.on('bridge-ready', () => {
+      console.log('JSBridge is ready!');
+      setBridgeStatus('ready');
+    });
+
+    // 延迟检查 Bridge 状态（防止竞态条件）
+    const checkTimer = setTimeout(() => {
+      if (jsbridge.isReady()) {
+        console.log('JSBridge detected as ready');
+        setBridgeStatus('ready');
+      } else {
+        console.log('JSBridge not available (browser mode)');
+        setBridgeStatus('not-available');
+      }
+    }, 500);
+
+    return () => {
+      clearTimeout(checkTimer);
+      unsubscribe();
+    };
+  }, []);
 
   return (
     <HashRouter>
@@ -70,7 +101,21 @@ const App: React.FC = () => {
         <div className="w-full max-w-md h-[100dvh] bg-slate-900 shadow-2xl overflow-hidden flex flex-col relative">
           
           {/* Status Bar Shim (aesthetic only) */}
-          <div className="h-6 w-full bg-slate-900 shrink-0"></div>
+          <div className="h-6 w-full bg-slate-900 shrink-0 flex items-center justify-between px-4 text-[10px]">
+            {/* App Environment Indicator */}
+            <div className="flex items-center gap-1">
+              <div className={`w-2 h-2 rounded-full ${
+                bridgeStatus === 'ready' ? 'bg-green-500' : 
+                bridgeStatus === 'loading' ? 'bg-yellow-500' : 
+                'bg-slate-600'
+              }`}></div>
+              <span className="text-slate-400">
+                {bridgeStatus === 'ready' ? 'Native App' : 
+                 bridgeStatus === 'loading' ? 'Loading...' : 
+                 'Browser'}
+              </span>
+            </div>
+          </div>
 
           {/* Main Content Area */}
           <div className="flex-1 overflow-hidden relative">
