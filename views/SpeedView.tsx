@@ -9,6 +9,12 @@ export const SpeedView: React.FC<Props> = ({ vm }) => {
   const [testing, setTesting] = useState(false);
   const [testPhase, setTestPhase] = useState<'idle' | 'download' | 'upload' | 'ping' | 'complete'>('idle');
   const [displaySpeed, setDisplaySpeed] = useState(0);
+  const [testUrl, setTestUrl] = useState('https://fast.com');
+  const testOptions = [
+    { label: 'fast.com', value: 'https://fast.com' },
+    { label: 'speed.cloudflare.com', value: 'https://speed.cloudflare.com' },
+    { label: 'speedtest.net', value: 'https://www.speedtest.net' },
+  ];
 
   const handleTest = async () => {
     if (!vm.isConnected) {
@@ -31,7 +37,7 @@ export const SpeedView: React.FC<Props> = ({ vm }) => {
     await simulatePingTest();
     
     // Run actual speed test
-    await vm.runSpeedTest();
+    await vm.runSpeedTest(testUrl);
     
     setTestPhase('complete');
     setTesting(false);
@@ -95,6 +101,19 @@ export const SpeedView: React.FC<Props> = ({ vm }) => {
 
       {/* Main Content Area - Similar to fast.com */}
       <div className="flex-grow flex flex-col items-center justify-center">
+        <div className="w-full max-w-xs mb-6">
+          <label className="block text-xs text-slate-400 mb-2">测速网址</label>
+          <select
+            className="w-full bg-slate-800 text-white rounded-md px-3 py-2 border border-slate-700"
+            value={testUrl}
+            onChange={(e) => setTestUrl(e.target.value)}
+            disabled={testing}
+          >
+            {testOptions.map(option => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </div>
         
         {/* Large Speed Display */}
         <div className="text-center mb-12">

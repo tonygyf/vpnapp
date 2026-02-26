@@ -57,8 +57,8 @@ export const useVpnBridge = () => {
   }, []);
 
   // 运行速度测试
-  const runSpeedTest = useCallback(async () => {
-    return await vpnBridgeService.runSpeedTest();
+  const runSpeedTest = useCallback(async (testUrl: string) => {
+    return await vpnBridgeService.runSpeedTest(testUrl);
   }, []);
 
   // 检查 VPN 权限

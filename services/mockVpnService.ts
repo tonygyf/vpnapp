@@ -122,11 +122,11 @@ export const mockVpnService = {
   },
 
   // Simulates the SpeedTest.kt logic - modeled after fast.com
-  async performSpeedTest(): Promise<{ download: number; upload: number; latency: number }> {
+  async performSpeedTest(testUrl: string): Promise<{ download: number; upload: number; latency: number }> {
     // 如果 JSBridge 可用，调用真实的原生速度测试
     if (vpnBridgeService.isReady()) {
       try {
-        return await vpnBridgeService.runSpeedTest();
+        return await vpnBridgeService.runSpeedTest(testUrl);
       } catch (error) {
         console.error('Real speed test failed, falling back to mock:', error);
       }

@@ -57,6 +57,6 @@ export interface VpnViewModel {
   removeSubscription: (url: string) => void;
   deleteNode: (nodeId: string) => void;  // 删除单个节点
   updateAllSubscriptions: () => Promise<void>;
-  runSpeedTest: () => Promise<void>;
+  runSpeedTest: (testUrl: string) => Promise<void>;
   purchasePremium: (method: 'wechat' | 'alipay') => Promise<void>;
 }

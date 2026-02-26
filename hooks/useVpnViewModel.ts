@@ -132,18 +132,14 @@ export const useVpnViewModel = (): VpnViewModel => {
     if (!selectedNode) return;
     setStatus('CONNECTING');
     try {
-      // 检查权限（如果在 App 中）
       if (isNativeApp) {
-        const hasPermission = await permissionManager.checkVpnPermission();
-        if (!hasPermission) {
-          const granted = await permissionManager.requestVpnPermission();
-          if (!granted) {
-            throw new Error('VPN permission denied');
-          }
+        const ok = await vpnBridgeService.connect(selectedNode);
+        if (!ok) {
+          throw new Error('Native connect failed');
         }
+      } else {
+        await mockVpnService.connect(selectedNode);
       }
-
-      await mockVpnService.connect(selectedNode);
       setStatus('CONNECTED');
       // Auto run a quick ping test on connect (optional, but good UX)
       setSpeedStats(prev => ({ ...prev, latency: selectedNode.ping }));
@@ -157,7 +153,11 @@ export const useVpnViewModel = (): VpnViewModel => {
   const disconnect = useCallback(async () => {
     setStatus('DISCONNECTING');
     try {
-      await mockVpnService.disconnect();
+      if (isNativeApp) {
+        await vpnBridgeService.disconnect();
+      } else {
+        await mockVpnService.disconnect();
+      }
       setStatus('DISCONNECTED');
       setSpeedStats({ download: 0, upload: 0, latency: 0 });
     } catch (e) {
@@ -246,12 +246,12 @@ export const useVpnViewModel = (): VpnViewModel => {
     }
   }, [isUpdatingSubscriptions, refreshNodeList]);
 
-  const runSpeedTest = useCallback(async () => {
+  const runSpeedTest = useCallback(async (testUrl: string) => {
     if (status !== 'CONNECTED') return;
     
     setSpeedStats({ download: 0, upload: 0, latency: 0 });
     
-    const results = await mockVpnService.performSpeedTest();
+    const results = await mockVpnService.performSpeedTest(testUrl);
     setSpeedStats(results);
     if (selectedNode) {
       subscriptionService.updateNodePing(selectedNode.id, results.latency);

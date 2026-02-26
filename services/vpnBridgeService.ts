@@ -125,6 +125,13 @@ class VpnBridgeService {
         name: node.name,
         protocol: node.protocol,
         config: node._raw, // 原始配置数据
+        disallowApps: (() => {
+          try {
+            const raw = localStorage.getItem('vpn_disallow_apps');
+            if (raw) return JSON.parse(raw);
+          } catch {}
+          return ['com.google.android.youtube'];
+        })(),
       };
 
       // 调用原生连接方法
@@ -221,9 +228,9 @@ class VpnBridgeService {
    * 运行速度测试
    * 返回下载速度、上传速度和延迟
    */
-  async runSpeedTest(): Promise<{ download: number; upload: number; latency: number }> {
+  async runSpeedTest(testUrl: string): Promise<{ download: number; upload: number; latency: number }> {
     try {
-      const result = await jsbridge.call('native.vpn.speedTest', {});
+      const result = await jsbridge.call('native.vpn.speedTest', { url: testUrl });
 
       if (result.success) {
         return {
