@@ -24,6 +24,8 @@ class JSBridge {
   private eventListeners: Map<string, EventListener[]> = new Map();
   private isWebViewReady: boolean = false;
   private nativeBridge: any = null;
+  private modernPort: MessagePort | null = null;
+  private pendingPort: Map<string, { resolve: (v: any) => void; reject: (e: any) => void; timeout: number }> = new Map();
 
   private constructor() {
     this.initializeBridge();
@@ -53,7 +55,44 @@ class JSBridge {
     const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
 
     if (isAndroid || isIOS) {
-      this.setupWebViewBridge();
+      window.addEventListener('message', (event: MessageEvent) => {
+        if (event.source !== window) return;
+        const anyEvent: any = event as any;
+        const hasPorts = (anyEvent.ports && anyEvent.ports.length > 0) || (event as any).ports?.length > 0;
+        if (event.data === 'bridge_ready' && hasPorts) {
+          const ports = (event as any).ports || anyEvent.ports;
+          this.modernPort = ports[0] as MessagePort;
+          if (this.modernPort) {
+            this.modernPort.onmessage = (msgEvent: MessageEvent) => {
+              try {
+                const raw = typeof msgEvent.data === 'string' ? JSON.parse(msgEvent.data) : msgEvent.data;
+                if (raw && (raw.type === 'event' || raw.name)) {
+                  this.handleEvent(raw);
+                  return;
+                }
+                const id = String(raw?.id ?? '');
+                const result = raw?.result ?? raw?.data ?? raw;
+                if (id && this.pendingPort.has(id)) {
+                  const pending = this.pendingPort.get(id)!;
+                  clearTimeout(pending.timeout);
+                  this.pendingPort.delete(id);
+                  pending.resolve(result);
+                } else if (raw && (raw.type === 'callback' || typeof raw.id !== 'undefined')) {
+                  this.handleNativeMessage(raw);
+                }
+              } catch (err) {
+                console.error('JSBridge: Modern port message error', err);
+              }
+            };
+            this.isWebViewReady = true;
+            this.emit('bridge-ready', {});
+            console.log('JSBridge: Modern WebMessagePort ready');
+          }
+        }
+      });
+      if (isIOS) {
+        this.setupWebViewBridge();
+      }
     } else {
       console.warn('JSBridge: Not running in a WebView environment');
       this.isWebViewReady = false;
@@ -67,14 +106,7 @@ class JSBridge {
     const isAndroid = /Android/.test(navigator.userAgent);
 
     if (isAndroid) {
-      if ((window as any).VpnJSBridge) {
-        console.log('JSBridge: Android WebView detected');
-        this.isWebViewReady = true;
-        (window as any).handleWebMessage = this.handleNativeMessage.bind(this);
-      } else {
-        console.warn('JSBridge: Waiting for Android WebView bridge injection...');
-        setTimeout(() => this.checkAndroidBridge(), 500);
-      }
+      return;
     } else {
       if ((window as any).webkit?.messageHandlers?.vpnBridge) {
         console.log('JSBridge: iOS WebView detected');
@@ -107,7 +139,7 @@ class JSBridge {
    * 检查 JSBridge 是否就绪
    */
   isReady(): boolean {
-    return this.isWebViewReady || !!this.nativeBridge;
+    return this.isWebViewReady || !!this.nativeBridge || !!this.modernPort;
   }
 
   /**
@@ -115,6 +147,37 @@ class JSBridge {
    * [新] 如果有 NativeBridge，优先使用增强版本
    */
   call(method: string, params?: Record<string, any>, callback?: MessageCallback): Promise<any> {
+    if (this.modernPort) {
+      const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const payload = { id, method, params: params || {} };
+      return new Promise((resolve, reject) => {
+        const timeout = window.setTimeout(() => {
+          if (this.pendingPort.has(id)) {
+            this.pendingPort.delete(id);
+            reject(new Error(`JSBridge timeout: ${method}`));
+          }
+        }, 15000);
+        this.pendingPort.set(id, {
+          resolve: (res: any) => {
+            if (callback) callback(res);
+            resolve(res);
+          },
+          reject: (e: any) => reject(e),
+          timeout,
+        });
+        try {
+          this.modernPort!.postMessage(JSON.stringify(payload));
+        } catch (e) {
+          clearTimeout(timeout);
+          this.pendingPort.delete(id);
+          reject(e);
+        }
+      });
+    }
+    const isAndroid = /Android/.test(navigator.userAgent);
+    if (isAndroid && !this.nativeBridge) {
+      return Promise.reject(new Error('JSBridge not ready'));
+    }
     // 优先使用增强的 NativeBridge
     if (this.nativeBridge && typeof this.nativeBridge.call === 'function') {
       console.log(`[JSBridge] Using NativeBridge for ${method}`);
@@ -127,12 +190,7 @@ class JSBridge {
     // 降级到原来的实现
     return new Promise((resolve, reject) => {
       if (!this.isWebViewReady) {
-        console.warn('JSBridge: Bridge not ready, queuing message');
-        setTimeout(() => {
-          this.call(method, params, callback)
-            .then(resolve)
-            .catch(reject);
-        }, 100);
+        reject(new Error('JSBridge not ready'));
         return;
       }
 
